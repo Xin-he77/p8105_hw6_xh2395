@@ -1,0 +1,13 @@
+---
+title: "p8105_hw6_xh2395"
+author: "Xin  He"
+date: "11/24/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
