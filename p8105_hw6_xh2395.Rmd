@@ -5,9 +5,135 @@ date: "11/24/2019"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r}
+library(tidyverse)
+library(modelr)
+library(mgcv)
 ```
 
-## R Markdown
+## Problem 1
+
+**Load the data**
+
+```{r}
+birthweight_df =
+  read_csv("./data/birthweight.csv") 
+```
+
+**Clean the data**
+
+```{r}
+bw_clean = 
+  birthweight_df %>% 
+  mutate(
+  babysex=as.factor(babysex),
+  babysex=recode(babysex,"1"="male", "2"="female"),
+  frace=as.factor(frace),
+  frace=recode(frace,"1"="white", "2"="black","3"="asian", "4"="puerto rican", "8"="other","9"="unknown"),
+  malform=as.factor(malform),
+  malform=recode(malform,"1"="present", "0"="absent"),
+  mrace=as.factor(mrace),
+  mrace=recode(mrace, "1"="white", "2"="black","3"="asian", "4"="puerto rican", "8"="other"))
+```
+
+**Check missing data**
+
+```{r}
+anyNA(bw_clean)
+```
+
+There is no missing data in this dataset.
+
+### Propose a regression model with all predictors
+
+```{r}
+model_1 = lm(bwt ~ ., data = bw_clean)
+
+summary(model_1)
+```
+
+There are 3 variables not defined because of singularities: pnumlbw, pnumsga, wtgain.
+
+### Exclude pnumlbw, pnumsga, wtgain
+
+```{r}
+model_2 = update(model_1, . ~ . -pnumlbw -pnumsga -wtgain)
+
+summary(model_2)
+```
+
+There are some non-significant variables. Since all frace-related variables are non-significant, we can exclude frace.
+
+### Exclude frace
+
+```{r}
+model_3 = update(model_2, . ~ . -frace)
+
+summary(model_3)
+```
+
+There are still some non-significant variables. We can exclude these with big p-values (>0.5): malform, momage, ppbmi.
+
+### Exclude malform, momage, ppbmi
+
+```{r}
+model_4 = update(model_3, . ~ . -malform -momage -ppbmi)
+
+summary(model_4)
+```
+
+The p-value of menarche is still bigger than 0.1, we can exclude it.
+
+### Exclude menarche
+
+```{r}
+model_5 = update(model_4, . ~ . -menarche)
+
+summary(model_5)
+```
+
+Now, the variable mrace has the biggest p-value. Let's try to exlude it.
+
+### Exclude mrace
+
+```{r}
+model_6 = update(model_5, . ~ . -mrace)
+
+summary(model_6)
+```
+
+Now, all left variables are with a significant p-value.
+
+**The final model:**
+
+lm(formula = bwt ~ babysex + bhead + blength + delwt + fincome + 
+    gaweeks + mheight + parity + ppwt + smoken, data = bw_clean)
+
+**tidy and table the final model**
+
+```{r}
+model_6 %>% 
+  broom::tidy() %>% 
+  knitr::kable()
+```
+
+**Plot of model residuals against fitted values**
+
+```{r}
+bw_clean %>% 
+modelr::add_residuals(model_6) %>% 
+modelr::add_predictions(model_6) %>% 
+  ggplot(aes(x = pred, y = resid)) + 
+  geom_point()+
+  labs(
+    title = 'Model residuals against fitted values',
+    x = 'Fitted values',
+    y = 'Residuals'
+  )
+```
+
+
+
+
+
 
