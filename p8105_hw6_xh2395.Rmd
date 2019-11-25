@@ -106,10 +106,9 @@ Now, all left variables are with a significant p-value.
 
 **The final model:**
 
-lm(formula = bwt ~ babysex + bhead + blength + delwt + fincome + 
-    gaweeks + mheight + parity + ppwt + smoken, data = bw_clean)
+lm(formula = bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks + mheight + parity + ppwt + smoken, data = bw_clean)
 
-**tidy and table the final model**
+**Tidy and table the final model**
 
 ```{r}
 model_6 %>% 
@@ -123,14 +122,56 @@ model_6 %>%
 bw_clean %>% 
 modelr::add_residuals(model_6) %>% 
 modelr::add_predictions(model_6) %>% 
-  ggplot(aes(x = pred, y = resid)) + 
-  geom_point()+
+  ggplot(aes(x = pred, y = resid, color = bwt)) + 
+  geom_point(alpha = 0.5)+
   labs(
     title = 'Model residuals against fitted values',
     x = 'Fitted values',
     y = 'Residuals'
   )
 ```
+
+**Two other models**
+
+```{r}
+other_1 = lm(bwt ~ blength + gaweeks, data = bw_clean)
+broom::tidy(other_1)
+
+other_2 = lm(bwt ~ bhead * blength + blength * babysex + bhead * babysex, data = bw_clean)
+broom::tidy(other_2)
+```
+
+**Comparison in terms of the cross-validated prediction error**
+
+```{r}
+cv_df = 
+  crossv_mc(bw_clean, 100) %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+cv_df = 
+  cv_df %>% 
+  mutate(model_6_mod  = map(train, ~model_6),
+         other_1_mod  = map(train, ~other_1),
+         other_2_mod  = map(train, ~other_2)) %>% 
+  mutate(rmse_model_6 = map2_dbl(model_6_mod, test, ~rmse(model = .x, data = .y)),
+         rmse_other_1 = map2_dbl(other_1_mod, test, ~rmse(model = .x, data = .y)),
+         rmse_other_2 = map2_dbl(other_2_mod, test, ~rmse(model = .x, data = .y)))
+
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + 
+    geom_violin()
+```
+
+According to the plot, my own model has the lowest root mean square error and thus seems to be the model that predicts birthweight best.
 
 
 
